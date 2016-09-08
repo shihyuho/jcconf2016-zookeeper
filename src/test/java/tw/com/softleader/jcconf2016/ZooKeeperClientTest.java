@@ -6,6 +6,7 @@ import static java.util.stream.Collectors.toList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
@@ -16,18 +17,27 @@ import tw.com.softleader.jcconf2016.ZooKeeperClient;
 
 public class ZooKeeperClientTest {
 
-  private static String connectString = "localhost:2181";
-  private static String rootPath = "/jcconf2016";
-  private static int numberOfPrticipants = 5;
+  static String connectString() {
+    return Optional.ofNullable(System.getProperty("connectString")).orElse("localhost:2181");
+  }
+
+  static String rootPath() {
+    return Optional.ofNullable(System.getProperty("rootPath")).orElse("/jcconf2016");
+  }
+
+  static int numberOfPrticipants() {
+    return Optional.ofNullable(System.getProperty("numberOfPrticipants")).map(Integer::parseInt)
+        .orElse(5);
+  }
 
   @Test
   public void test() throws InterruptedException {
-    if (numberOfPrticipants < 2) {
-      Assert.fail("The number of participants must >= 2, but was " + numberOfPrticipants);
+    if (numberOfPrticipants() < 2) {
+      Assert.fail("The number of participants must >= 2, but was " + numberOfPrticipants());
     }
 
-    Collection<ZooKeeperClient> participants = IntStream.range(0, numberOfPrticipants)
-        .mapToObj(i -> new ZooKeeperClient(connectString, rootPath, "" + i)).collect(toList());
+    Collection<ZooKeeperClient> participants = IntStream.range(0, numberOfPrticipants())
+        .mapToObj(i -> new ZooKeeperClient(connectString(), rootPath(), "" + i)).collect(toList());
 
     participants.forEach(ZooKeeperClient::start);
     TimeUnit.SECONDS.sleep(1); // just a short wait for all participants connecting to server
@@ -39,7 +49,7 @@ public class ZooKeeperClientTest {
     }
   }
 
-  public void testAcquireAndRelinquishLeadership(Collection<ZooKeeperClient> participants)
+  void testAcquireAndRelinquishLeadership(Collection<ZooKeeperClient> participants)
       throws InterruptedException {
     Map<Boolean, List<ZooKeeperClient>> leaderships =
         participants.stream().collect(partitioningBy(ZooKeeperClient::hasLeadership));
@@ -49,7 +59,7 @@ public class ZooKeeperClientTest {
     ZooKeeperClient leader = ownLeaderships.get(0);
 
     List<ZooKeeperClient> followers = leaderships.get(false);
-    Assert.assertEquals(numberOfPrticipants - 1, followers.size());
+    Assert.assertEquals(numberOfPrticipants() - 1, followers.size());
     followers.forEach(
         follower -> Assert.assertNotEquals(leader.getParticipantId(), follower.getParticipantId()));
 

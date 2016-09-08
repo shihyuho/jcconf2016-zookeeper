@@ -21,9 +21,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 public class SpringScheduledTest {
 
-  private static String connectString = "localhost:2181";
-  private static String rootPath = "/jcconf2016";
-  private static int numberOfPrticipants = 5;
   private static AtomicInteger id = new AtomicInteger();
 
   @Configuration
@@ -34,7 +31,8 @@ public class SpringScheduledTest {
 
     @Bean(initMethod = "start", destroyMethod = "close")
     public ZooKeeperClient zooKeeperLeaderLatch() {
-      return new ZooKeeperClient(connectString, rootPath, "" + id.incrementAndGet());
+      return new ZooKeeperClient(ZooKeeperClientTest.connectString(),
+          ZooKeeperClientTest.rootPath(), "" + id.incrementAndGet());
     }
 
     @Bean
@@ -49,9 +47,10 @@ public class SpringScheduledTest {
   @Test
   public void test() throws InterruptedException {
 
-    Collection<ConfigurableApplicationContext> contexts = IntStream.range(0, numberOfPrticipants)
-        .mapToObj(i -> new AnnotationConfigApplicationContext(ScheduledConfig.class))
-        .collect(toList());
+    Collection<ConfigurableApplicationContext> contexts =
+        IntStream.range(0, ZooKeeperClientTest.numberOfPrticipants())
+            .mapToObj(i -> new AnnotationConfigApplicationContext(ScheduledConfig.class))
+            .collect(toList());
     TimeUnit.SECONDS.sleep(1); // just a short wait for all participants connecting to server
 
     try {

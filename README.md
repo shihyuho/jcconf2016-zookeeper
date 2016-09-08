@@ -13,3 +13,9 @@ A simple example zookeeper client for JCConf2016
 - `mvn -Dtest=tw.com.softleader.jcconf2016.ZooKeeperClientTest test`
 - `mvn -Dtest=tw.com.softleader.jcconf2016.SpringScheduledTest test`
 
+### Optional Parameters
+
+- `-DnumberOfPrticipants=5`
+- `-DconnectString=localhost:2181`
+- `-DrootPath=/jcconf2016` 
+
