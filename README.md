@@ -15,7 +15,7 @@ A simple example zookeeper client for JCConf2016
 
 ### Optional Parameters
 
-- `-DnumberOfPrticipants=5`
 - `-DconnectString=localhost:2181`
 - `-DrootPath=/jcconf2016` 
+- `-DnumberOfPrticipants=5`
 
