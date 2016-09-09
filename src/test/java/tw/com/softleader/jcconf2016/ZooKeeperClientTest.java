@@ -29,24 +29,24 @@ public class ZooKeeperClientTest {
 
   private static String connectString;
   private static String rootPath;
-  private static int numberOfPrticipants;
+  private static int numberOfParticipants;
 
   @BeforeClass
   public static void setUp() {
     connectString =
         Optional.ofNullable(System.getProperty("connectString")).orElse("localhost:2181");
     rootPath = Optional.ofNullable(System.getProperty("rootPath")).orElse("/jcconf2016");
-    numberOfPrticipants = Optional.ofNullable(System.getProperty("numberOfPrticipants"))
+    numberOfParticipants = Optional.ofNullable(System.getProperty("numberOfParticipants"))
         .map(Integer::parseInt).orElse(5);
 
-    if (numberOfPrticipants < 2) {
-      Assert.fail("The number of participants must >= 2, but was " + numberOfPrticipants);
+    if (numberOfParticipants < 2) {
+      Assert.fail("The number of participants must >= 2, but was " + numberOfParticipants);
     }
   }
 
   @Test
   public void testClient() throws InterruptedException {
-    Collection<ZooKeeperClient> participants = IntStream.range(0, numberOfPrticipants)
+    Collection<ZooKeeperClient> participants = IntStream.range(0, numberOfParticipants)
         .mapToObj(i -> new ZooKeeperClient(connectString, rootPath, "" + i)).collect(toList());
 
     participants.forEach(ZooKeeperClient::start);
@@ -83,7 +83,7 @@ public class ZooKeeperClientTest {
 
   @Test
   public void testSpringTask() throws InterruptedException {
-    Collection<ConfigurableApplicationContext> contexts = IntStream.range(0, numberOfPrticipants)
+    Collection<ConfigurableApplicationContext> contexts = IntStream.range(0, numberOfParticipants)
         .mapToObj(i -> new AnnotationConfigApplicationContext(ScheduledConfig.class))
         .collect(toList());
     TimeUnit.SECONDS.sleep(1); // just a short wait for all participants connecting to server
@@ -109,7 +109,7 @@ public class ZooKeeperClientTest {
     ZooKeeperClient leader = ownLeaderships.get(0);
 
     List<ZooKeeperClient> followers = leaderships.get(false);
-    Assert.assertEquals(numberOfPrticipants - 1, followers.size());
+    Assert.assertEquals(numberOfParticipants - 1, followers.size());
     followers.forEach(
         follower -> Assert.assertNotEquals(leader.getParticipantId(), follower.getParticipantId()));
 
