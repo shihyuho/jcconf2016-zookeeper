@@ -10,8 +10,8 @@ A simple example zookeeper client for JCConf2016
 
 ## Run Example Test
 
-- `mvn -Dtest=tw.com.softleader.jcconf2016.ZooKeeperClientTest test`
-- `mvn -Dtest=tw.com.softleader.jcconf2016.SpringScheduledTest test`
+- `mvn -Dtest=ZooKeeperClientTest#testClient test`
+- `mvn -Dtest=ZooKeeperClientTest#testSpringTask test`
 
 ### Optional Parameters
 

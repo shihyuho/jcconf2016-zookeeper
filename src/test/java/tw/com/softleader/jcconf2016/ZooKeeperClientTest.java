@@ -8,36 +8,46 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
-
-import tw.com.softleader.jcconf2016.ZooKeeperClient;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 public class ZooKeeperClientTest {
 
-  static String connectString() {
-    return Optional.ofNullable(System.getProperty("connectString")).orElse("localhost:2181");
-  }
+  private static String connectString;
+  private static String rootPath;
+  private static int numberOfPrticipants;
 
-  static String rootPath() {
-    return Optional.ofNullable(System.getProperty("rootPath")).orElse("/jcconf2016");
-  }
+  @BeforeClass
+  public static void setUp() {
+    connectString =
+        Optional.ofNullable(System.getProperty("connectString")).orElse("localhost:2181");
+    rootPath = Optional.ofNullable(System.getProperty("rootPath")).orElse("/jcconf2016");
+    numberOfPrticipants = Optional.ofNullable(System.getProperty("numberOfPrticipants"))
+        .map(Integer::parseInt).orElse(5);
 
-  static int numberOfPrticipants() {
-    return Optional.ofNullable(System.getProperty("numberOfPrticipants")).map(Integer::parseInt)
-        .orElse(5);
+    if (numberOfPrticipants < 2) {
+      Assert.fail("The number of participants must >= 2, but was " + numberOfPrticipants);
+    }
   }
 
   @Test
-  public void test() throws InterruptedException {
-    if (numberOfPrticipants() < 2) {
-      Assert.fail("The number of participants must >= 2, but was " + numberOfPrticipants());
-    }
-
-    Collection<ZooKeeperClient> participants = IntStream.range(0, numberOfPrticipants())
-        .mapToObj(i -> new ZooKeeperClient(connectString(), rootPath(), "" + i)).collect(toList());
+  public void testClient() throws InterruptedException {
+    Collection<ZooKeeperClient> participants = IntStream.rangeClosed(1, numberOfPrticipants)
+        .mapToObj(i -> new ZooKeeperClient(connectString, rootPath, "" + i)).collect(toList());
 
     participants.forEach(ZooKeeperClient::start);
     TimeUnit.SECONDS.sleep(1); // just a short wait for all participants connecting to server
@@ -49,7 +59,47 @@ public class ZooKeeperClientTest {
     }
   }
 
-  void testAcquireAndRelinquishLeadership(Collection<ZooKeeperClient> participants)
+  @Configuration
+  @EnableAsync
+  @EnableScheduling
+  @ComponentScan(basePackages = {"tw.com.softleader.*"})
+  public static class ScheduledConfig {
+
+    private static AtomicInteger id = new AtomicInteger();
+
+    @Bean(initMethod = "start", destroyMethod = "close")
+    public ZooKeeperClient zooKeeperLeaderLatch() {
+      return new ZooKeeperClient(connectString, rootPath, "" + id.incrementAndGet());
+    }
+
+    @Bean
+    @Primary
+    public TaskScheduler taskScheduler(ZooKeeperClient zooKeeperLeaderLatch) {
+      ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+      taskScheduler.afterPropertiesSet();
+      return new ZookeeperTaskScheduler(zooKeeperLeaderLatch, taskScheduler);
+    }
+  }
+
+  @Test
+  public void testSpringTask() throws InterruptedException {
+    Collection<ConfigurableApplicationContext> contexts = IntStream.range(0, numberOfPrticipants)
+        .mapToObj(i -> new AnnotationConfigApplicationContext(ScheduledConfig.class))
+        .collect(toList());
+    TimeUnit.SECONDS.sleep(1); // just a short wait for all participants connecting to server
+
+    try {
+      Collection<ZooKeeperClient> participants =
+          contexts.stream().map(ctx -> ctx.getBean(ZooKeeperClient.class)).collect(toList());
+      new ZooKeeperClientTest().testAcquireAndRelinquishLeadership(participants);
+    } finally {
+      contexts.forEach(ConfigurableApplicationContext::close);
+    }
+
+  }
+
+
+  private void testAcquireAndRelinquishLeadership(Collection<ZooKeeperClient> participants)
       throws InterruptedException {
     Map<Boolean, List<ZooKeeperClient>> leaderships =
         participants.stream().collect(partitioningBy(ZooKeeperClient::hasLeadership));
@@ -59,7 +109,7 @@ public class ZooKeeperClientTest {
     ZooKeeperClient leader = ownLeaderships.get(0);
 
     List<ZooKeeperClient> followers = leaderships.get(false);
-    Assert.assertEquals(numberOfPrticipants() - 1, followers.size());
+    Assert.assertEquals(numberOfPrticipants - 1, followers.size());
     followers.forEach(
         follower -> Assert.assertNotEquals(leader.getParticipantId(), follower.getParticipantId()));
 
