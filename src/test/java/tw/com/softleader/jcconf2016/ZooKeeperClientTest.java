@@ -46,7 +46,7 @@ public class ZooKeeperClientTest {
 
   @Test
   public void testClient() throws InterruptedException {
-    Collection<ZooKeeperClient> participants = IntStream.rangeClosed(1, numberOfPrticipants)
+    Collection<ZooKeeperClient> participants = IntStream.range(0, numberOfPrticipants)
         .mapToObj(i -> new ZooKeeperClient(connectString, rootPath, "" + i)).collect(toList());
 
     participants.forEach(ZooKeeperClient::start);
@@ -69,7 +69,7 @@ public class ZooKeeperClientTest {
 
     @Bean(initMethod = "start", destroyMethod = "close")
     public ZooKeeperClient zooKeeperLeaderLatch() {
-      return new ZooKeeperClient(connectString, rootPath, "" + id.incrementAndGet());
+      return new ZooKeeperClient(connectString, rootPath, "" + id.getAndIncrement());
     }
 
     @Bean
