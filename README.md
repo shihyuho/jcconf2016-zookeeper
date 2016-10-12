@@ -18,3 +18,7 @@ A simple example zookeeper client for JCConf2016
 - `-DrootPath=/jcconf2016` 
 - `-DnumberOfParticipants=5`
 
+### Requires
+
+- [Apache Maven](https://maven.apache.org) installed
+- JDK8
