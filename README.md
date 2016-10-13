@@ -5,7 +5,8 @@ A simple example zookeeper client for JCConf2016
 ## Start Zookeeper server in standalone mode
 
 1. Download from [Apache ZooKeeper™ Releases](https://zookeeper.apache.org/releases.html)
-2. `/bin/zkServer.sh start`
+2. `cp conf/zoo_sample.cfg conf/zoo.cfg`
+3. `bin/zkServer.sh start`
 
 ## Run example test
 
